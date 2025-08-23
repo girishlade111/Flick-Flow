@@ -42,6 +42,8 @@ export function VideoPlayer({ src }: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const playerRef = useRef<HTMLDivElement>(null);
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
   const { toast } = useToast();
 
   const [isPlaying, setIsPlaying] = useState(false);
@@ -82,7 +84,7 @@ export function VideoPlayer({ src }: VideoPlayerProps) {
       });
   }, [toast]);
   
-  const handleFileChange = (
+  const handleFileChange = useCallback((
     event: React.ChangeEvent<HTMLInputElement>,
     type: 'audio' | 'subtitle'
   ) => {
@@ -92,31 +94,37 @@ export function VideoPlayer({ src }: VideoPlayerProps) {
     const fileURL = URL.createObjectURL(file);
 
     if (type === 'audio') {
-      const newAudio = new Audio(fileURL);
-      videoRef.current.muted = true;
-      setIsMuted(true);
+        if (audioRef.current) {
+            audioRef.current.src = fileURL;
+        } else {
+            audioRef.current = new Audio(fileURL);
+        }
+      
+        videoRef.current.muted = true;
+        setIsMuted(true);
 
-      const syncAudio = () => {
-        if (videoRef.current) newAudio.currentTime = videoRef.current.currentTime;
-      };
-      const playAudio = () => newAudio.play();
-      const pauseAudio = () => newAudio.pause();
+        const syncAudio = () => {
+            if (videoRef.current && audioRef.current) {
+                audioRef.current.currentTime = videoRef.current.currentTime;
+            }
+        };
+        const playAudio = () => audioRef.current?.play();
+        const pauseAudio = () => audioRef.current?.pause();
 
-      videoRef.current.addEventListener('play', playAudio);
-      videoRef.current.addEventListener('pause', pauseAudio);
-      videoRef.current.addEventListener('seeking', syncAudio);
+        videoRef.current.addEventListener('play', playAudio);
+        videoRef.current.addEventListener('pause', pauseAudio);
+        videoRef.current.addEventListener('seeking', syncAudio);
+        
+        audioRef.current.play();
 
-      newAudio.play();
-
-      toast({
-        title: 'Audio Track Changed',
-        description: 'The new audio track is now playing and the original is muted.',
-      });
+        toast({
+            title: 'Audio Track Changed',
+            description: 'The new audio track is now playing and the original is muted.',
+        });
     } else if (type === 'subtitle') {
-      // Remove any existing subtitle tracks
-      Array.from(videoRef.current.textTracks).forEach(track => {
-        (track as any).track?.remove();
-      });
+      // Remove any existing subtitle tracks to prevent duplicates
+      const existingTracks = videoRef.current.querySelectorAll('track');
+      existingTracks.forEach(track => track.remove());
 
       const trackElement = document.createElement('track');
       trackElement.kind = 'subtitles';
@@ -127,7 +135,11 @@ export function VideoPlayer({ src }: VideoPlayerProps) {
       
       trackElement.addEventListener('load', () => {
         if(videoRef.current) {
-            videoRef.current.textTracks[0].mode = 'showing';
+            // Forcefully show the track
+            const firstTrack = videoRef.current.textTracks[0];
+            if (firstTrack) {
+                firstTrack.mode = 'showing';
+            }
             setAreSubtitlesVisible(true);
             toast({
                 title: 'Subtitles Loaded',
@@ -137,7 +149,7 @@ export function VideoPlayer({ src }: VideoPlayerProps) {
       });
       videoRef.current.appendChild(trackElement);
     }
-  };
+  }, [toast]);
   
   const togglePlayPause = useCallback(() => {
     if (videoRef.current) {
@@ -149,20 +161,20 @@ export function VideoPlayer({ src }: VideoPlayerProps) {
     }
   }, [play]);
 
-
-  const handleSeek = (amount: number) => {
+  const handleSeek = useCallback((amount: number) => {
     if (videoRef.current) {
       videoRef.current.currentTime += amount;
     }
-  };
+  }, []);
 
-  const handleProgressScrub = (value: number[]) => {
+  const handleProgressScrub = useCallback((value: number[]) => {
     if (videoRef.current) {
       videoRef.current.currentTime = value[0];
+      setCurrentTime(value[0]);
     }
-  };
+  }, []);
 
-  const handleVolumeChange = (value: number[]) => {
+  const handleVolumeChange = useCallback((value: number[]) => {
     const newVolume = value[0];
     if (videoRef.current) {
       videoRef.current.volume = newVolume;
@@ -170,14 +182,21 @@ export function VideoPlayer({ src }: VideoPlayerProps) {
     }
     setVolume(newVolume);
     setIsMuted(newVolume === 0);
-  };
+  }, []);
 
   const toggleMute = useCallback(() => {
     if (videoRef.current) {
       const newMuted = !videoRef.current.muted;
       videoRef.current.muted = newMuted;
       setIsMuted(newMuted);
-      setVolume(newMuted ? 0 : videoRef.current.volume);
+      if (!newMuted) {
+        // If unmuting and volume was 0, set to a default value
+        const currentVolume = videoRef.current.volume;
+        if (currentVolume === 0) {
+            videoRef.current.volume = 1;
+            setVolume(1);
+        }
+      }
     }
   }, []);
 
@@ -212,14 +231,14 @@ export function VideoPlayer({ src }: VideoPlayerProps) {
     }, 3000);
   }, []);
 
-  const handlePlaybackRateChange = (rate: string) => {
+  const handlePlaybackRateChange = useCallback((rate: string) => {
     setPlaybackRate(rate);
     if (videoRef.current) {
       videoRef.current.playbackRate = parseFloat(rate);
     }
-  };
+  }, []);
 
-  const handleZoom = (direction: 'in' | 'out') => {
+  const handleZoom = useCallback((direction: 'in' | 'out') => {
     setZoomLevel((prevZoom) => {
       const newZoom =
         direction === 'in'
@@ -230,14 +249,16 @@ export function VideoPlayer({ src }: VideoPlayerProps) {
       }
       return newZoom;
     });
-  };
+  }, []);
 
   const toggleSubtitles = useCallback(() => {
     if (videoRef.current) {
       const tracks = videoRef.current.textTracks;
       if (tracks.length > 0) {
-        const isShowing = tracks[0].mode === 'showing';
-        tracks[0].mode = isShowing ? 'hidden' : 'showing';
+        const isShowing = Array.from(tracks).some(t => t.mode === 'showing');
+        for (const track of Array.from(tracks)) {
+            track.mode = isShowing ? 'hidden' : 'showing';
+        }
         setAreSubtitlesVisible(!isShowing);
       } else {
         toast({
@@ -282,12 +303,14 @@ export function VideoPlayer({ src }: VideoPlayerProps) {
             break;
         case '>':
           if (shiftKey) {
-            handlePlaybackRateChange(String(Math.min(parseFloat(playbackRate) + 0.25, 2.5)));
+            const currentRate = videoRef.current?.playbackRate || 1;
+            handlePlaybackRateChange(String(Math.min(currentRate + 0.25, 2.5)));
           }
           break;
         case '<':
           if (shiftKey) {
-            handlePlaybackRateChange(String(Math.max(parseFloat(playbackRate) - 0.25, 0.25)));
+            const currentRate = videoRef.current?.playbackRate || 1;
+            handlePlaybackRateChange(String(Math.max(currentRate - 0.25, 0.25)));
           }
           break;
         case 'c':
@@ -299,7 +322,8 @@ export function VideoPlayer({ src }: VideoPlayerProps) {
       togglePlayPause,
       toggleFullScreen,
       toggleMute,
-      playbackRate,
+      handleSeek,
+      handlePlaybackRateChange,
       toggleSubtitles,
     ]
   );
@@ -314,9 +338,11 @@ export function VideoPlayer({ src }: VideoPlayerProps) {
     const onLoadedMetadata = () => {
       setDuration(video.duration);
       setIsMuted(video.muted);
-      if (!video.muted) setVolume(video.volume);
-      setAreSubtitlesVisible(video.textTracks.length > 0 && video.textTracks[0].mode === 'showing');
-      play();
+      setVolume(video.volume);
+      const hasSubtitles = video.textTracks.length > 0;
+      if (hasSubtitles) {
+        video.textTracks[0].mode = areSubtitlesVisible ? 'showing' : 'hidden';
+      }
     };
     const onError = () => {
       toast({
@@ -332,9 +358,9 @@ export function VideoPlayer({ src }: VideoPlayerProps) {
     video.addEventListener('loadedmetadata', onLoadedMetadata);
     video.addEventListener('error', onError);
     document.addEventListener('fullscreenchange', handleFullscreenChange);
-    playerRef.current?.addEventListener('keydown', handleKeyDown);
-
-    const currentSrc = video.src;
+    
+    const playerElement = playerRef.current;
+    playerElement?.addEventListener('keydown', handleKeyDown);
 
     return () => {
       video.removeEventListener('play', onPlay);
@@ -343,18 +369,16 @@ export function VideoPlayer({ src }: VideoPlayerProps) {
       video.removeEventListener('loadedmetadata', onLoadedMetadata);
       video.removeEventListener('error', onError);
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
-      playerRef.current?.removeEventListener('keydown', handleKeyDown);
-      if (currentSrc && currentSrc.startsWith('blob:')) {
-        URL.revokeObjectURL(currentSrc);
+      playerElement?.removeEventListener('keydown', handleKeyDown);
+      
+      if (video.src.startsWith('blob:')) {
+        URL.revokeObjectURL(video.src);
+      }
+      if (audioRef.current && audioRef.current.src.startsWith('blob:')) {
+        URL.revokeObjectURL(audioRef.current.src);
       }
     };
-  }, [src, handleFullscreenChange, toast, handleKeyDown, play]);
-
-  useEffect(() => {
-    if (videoRef.current) {
-        videoRef.current.style.transform = `scale(${zoomLevel})`;
-    }
-  }, [zoomLevel]);
+  }, [src, handleFullscreenChange, toast, handleKeyDown, areSubtitlesVisible]);
   
   const VolumeIcon =
     isMuted || volume === 0 ? VolumeX : volume < 0.5 ? Volume1 : Volume2;
@@ -381,11 +405,10 @@ export function VideoPlayer({ src }: VideoPlayerProps) {
       <div
         className={cn(
           'absolute inset-0 flex items-center justify-center pointer-events-none transition-opacity duration-300',
-          'group-hover:opacity-100',
-          !isPlaying ? 'opacity-100' : 'opacity-0'
+          !isPlaying ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
         )}
       >
-        <div className="flex gap-4 p-4 rounded-full bg-black/50 backdrop-blur-sm">
+        <div className="flex items-center gap-4 p-4 rounded-full bg-black/50 backdrop-blur-sm">
           <Button onClick={(e) => { e.stopPropagation(); handleSeek(-10); }} variant="ghost" size="icon" className="text-white hover:bg-white/10 pointer-events-auto h-16 w-16">
               <Rewind className="w-8 h-8"/>
           </Button>
@@ -401,7 +424,7 @@ export function VideoPlayer({ src }: VideoPlayerProps) {
       <div
         className={cn(
           'absolute bottom-0 left-0 right-0 p-2 sm:p-3 bg-gradient-to-t from-black/70 to-transparent transition-opacity duration-300',
-          areControlsVisible ? 'opacity-100' : 'opacity-0'
+          areControlsVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'
         )}
         onClick={(e) => e.stopPropagation()}
       >
@@ -411,7 +434,7 @@ export function VideoPlayer({ src }: VideoPlayerProps) {
             max={duration || 1}
             step={1}
             onValueChange={handleProgressScrub}
-            className="w-full h-2 [&>span:first-child]:h-1.5 [&>span:first-child>span]:h-1.5"
+            className="w-full h-2 [&>span:first-child]:h-1.5 [&>span:first-child>span]:h-1.5 cursor-pointer"
           />
           <div className="flex items-center justify-between gap-4 text-white">
             <div className="flex items-center gap-1 sm:gap-2">
@@ -428,6 +451,7 @@ export function VideoPlayer({ src }: VideoPlayerProps) {
                     onValueChange={handleVolumeChange}
                     max={1}
                     step={0.01}
+                    className="cursor-pointer"
                   />
                 </div>
               </div>
@@ -482,8 +506,16 @@ export function VideoPlayer({ src }: VideoPlayerProps) {
                   onChange={(e) => handleFileChange(e, 'audio')}
                 />
               </Label>
-               <Label htmlFor="subtitle-upload" className="cursor-pointer">
-                <div className={cn("text-white hover:bg-white/10 rounded-md p-2", areSubtitlesVisible && "bg-primary/50")}>
+               <Button
+                onClick={toggleSubtitles}
+                variant="ghost"
+                size="icon"
+                className={cn("text-white hover:bg-white/10", areSubtitlesVisible && "bg-primary/50 text-primary-foreground")}
+              >
+                <Subtitles />
+              </Button>
+              <Label htmlFor="subtitle-upload" className="cursor-pointer">
+                <div className="text-white hover:bg-white/10 rounded-md p-2">
                   <Subtitles />
                 </div>
                 <Input
