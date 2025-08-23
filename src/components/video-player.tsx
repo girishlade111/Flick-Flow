@@ -64,21 +64,34 @@ export function VideoPlayer({ src }: VideoPlayerProps) {
     )}`;
   };
 
+  const playVideo = useCallback(() => {
+    if (videoRef.current) {
+      videoRef.current.play().catch((error) => {
+        // Mute and try again for autoplay policy
+        if (videoRef.current) {
+            videoRef.current.muted = true;
+            setIsMuted(true);
+            videoRef.current.play().catch((e) => {
+                 toast({
+                    title: 'Playback Error',
+                    description: 'Could not play the video.',
+                    variant: 'destructive',
+                });
+            })
+        }
+      });
+    }
+  }, [toast]);
+
   const togglePlayPause = useCallback(() => {
     if (videoRef.current) {
       if (videoRef.current.paused) {
-        videoRef.current.play().catch((error) => {
-          toast({
-            title: 'Playback Error',
-            description: 'Could not play the video.',
-            variant: 'destructive',
-          });
-        });
+        playVideo();
       } else {
         videoRef.current.pause();
       }
     }
-  }, [toast]);
+  }, [playVideo]);
 
   const handleSeek = (amount: number) => {
     if (videoRef.current) {
@@ -329,6 +342,7 @@ export function VideoPlayer({ src }: VideoPlayerProps) {
       setAreSubtitlesVisible(
         video.textTracks.length > 0 && video.textTracks[0].mode === 'showing'
       );
+      playVideo();
     };
     const onError = () => {
       toast({
@@ -361,7 +375,7 @@ export function VideoPlayer({ src }: VideoPlayerProps) {
         URL.revokeObjectURL(currentSrc);
       }
     };
-  }, [handleFullscreenChange, toast, handleKeyDown, src]);
+  }, [handleFullscreenChange, toast, handleKeyDown, src, playVideo]);
 
   useEffect(() => {
     if (videoRef.current) {
