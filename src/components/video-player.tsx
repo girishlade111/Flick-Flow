@@ -64,10 +64,14 @@ export function VideoPlayer({ src }: VideoPlayerProps) {
     )}`;
   };
 
-  const playVideo = useCallback(async () => {
+  const togglePlayPause = useCallback(async () => {
     if (videoRef.current) {
       try {
-        await videoRef.current.play();
+        if (videoRef.current.paused) {
+          await videoRef.current.play();
+        } else {
+          videoRef.current.pause();
+        }
       } catch (error) {
         toast({
           title: 'Playback Error',
@@ -77,16 +81,6 @@ export function VideoPlayer({ src }: VideoPlayerProps) {
       }
     }
   }, [toast]);
-
-  const togglePlayPause = useCallback(() => {
-    if (videoRef.current) {
-      if (videoRef.current.paused) {
-        playVideo();
-      } else {
-        videoRef.current.pause();
-      }
-    }
-  }, [playVideo]);
 
   const handleSeek = (amount: number) => {
     if (videoRef.current) {
