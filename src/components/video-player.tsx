@@ -64,22 +64,17 @@ export function VideoPlayer({ src }: VideoPlayerProps) {
     )}`;
   };
 
-  const playVideo = useCallback(() => {
+  const playVideo = useCallback(async () => {
     if (videoRef.current) {
-      videoRef.current.play().catch((error) => {
-        // Mute and try again for autoplay policy
-        if (videoRef.current) {
-            videoRef.current.muted = true;
-            setIsMuted(true);
-            videoRef.current.play().catch((e) => {
-                 toast({
-                    title: 'Playback Error',
-                    description: 'Could not play the video.',
-                    variant: 'destructive',
-                });
-            })
-        }
-      });
+      try {
+        await videoRef.current.play();
+      } catch (error) {
+        toast({
+          title: 'Playback Error',
+          description: 'Could not play the video.',
+          variant: 'destructive',
+        });
+      }
     }
   }, [toast]);
 
@@ -342,7 +337,6 @@ export function VideoPlayer({ src }: VideoPlayerProps) {
       setAreSubtitlesVisible(
         video.textTracks.length > 0 && video.textTracks[0].mode === 'showing'
       );
-      playVideo();
     };
     const onError = () => {
       toast({
@@ -375,7 +369,7 @@ export function VideoPlayer({ src }: VideoPlayerProps) {
         URL.revokeObjectURL(currentSrc);
       }
     };
-  }, [handleFullscreenChange, toast, handleKeyDown, src, playVideo]);
+  }, [handleFullscreenChange, toast, handleKeyDown, src]);
 
   useEffect(() => {
     if (videoRef.current) {
