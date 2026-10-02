@@ -1,63 +1,57 @@
-
 # Flick Flow
 
-Flick Flow is a modern, minimalist, and high-performance media player built with Next.js and meticulously designed in Firebase Studio. It provides a seamless and intuitive interface for local media playback, prioritizing user experience and a clean aesthetic.
+Flick Flow is a modern, minimalist, and high-performance media player built with Next.js 15 and Tailwind CSS (originally scaffolded in Firebase Studio). It provides a seamless, intuitive interface for **local media playback** — everything runs in the browser, with no server, no login, and no uploads.
 
-## ✨ Features
+Live demo: https://girishlade111.github.io/Flick-Flow/
 
-- **Modern, Minimalist UI**: A clean and unobtrusive interface that puts your content front and center.
-- **Local File Playback**: Easily load and play video (`.mp4`, `.webm`, `.ogg`) and audio (`.mp3`, `.wav`, etc.) files from your device.
-- **Custom Subtitles**: Supports external subtitle files (`.vtt`) for an accessible viewing experience.
-- **Advanced Playback Controls**:
-    - Play/Pause
-    - Volume control and mute
-    - Timeline scrubbing
-    - Adjustable playback speed (0.25x to 2.5x)
-- **Enhanced Viewing**:
-    - **Fullscreen Mode**: Immerse yourself completely.
-    - **Zoom Controls**: Zoom in and out of the video to focus on details.
-- **Fully Responsive**: Delivers a flawless experience across desktops, tablets, and mobile devices.
-- **Keyboard Shortcuts**: A comprehensive set of hotkeys for power users to control every aspect of playback without touching the mouse.
+## Features
 
-## 🚀 Getting Started
+- **Modern, minimalist UI** — clean, unobtrusive interface that puts your content front and center
+- **Local file playback** — load and play video (`.mp4`, `.webm`, `.ogg`) and audio (`.mp3`, `.wav`, etc.) straight from your device (nothing leaves the browser)
+- **Custom subtitles** — external `.vtt` subtitle file support for an accessible viewing experience
+- **Advanced playback controls**:
+  - Play/Pause
+  - Volume control and mute
+  - Timeline scrubbing
+  - Adjustable playback speed (0.25x to 2.5x)
+- **Enhanced viewing**:
+  - Fullscreen mode
+  - Zoom in/out controls to focus on details
+- **Fully responsive** — flawless experience across desktop, tablet, and mobile
+- **Keyboard shortcuts** — control playback without touching the mouse
+- **Shareable links** — pass a video URL via the `?video=` query param
 
-1.  **Clone the repository:**
-    ```bash
-    git clone https://github.com/your-repo/flick-flow.git
-    ```
-2.  **Install dependencies:**
-    ```bash
-    npm install
-    ```
-3.  **Run the development server:**
-    ```bash
-    npm run dev
-    ```
+## Tech stack
 
-Open [http://localhost:9002](http://localhost:9002) with your browser to see the result.
+- Next.js 15 (App Router, static export)
+- React 18 + TypeScript
+- Tailwind CSS + shadcn/ui components (Radix UI)
+- lucide-react icons
+- Exported as a fully static site (`output: 'export'`) — no backend required
 
-## ⌨️ Keyboard Shortcuts
+## Quick start
 
-Control the player with these handy keyboard shortcuts:
+```bash
+npm install
+npm run dev        # dev server at http://localhost:9002
+npm run build      # static export to ./out
+```
 
-| Key(s)               | Action                                   |
-| -------------------- | ---------------------------------------- |
-| `Space` or `K`       | Play / Pause                             |
-| `F`                  | Toggle Fullscreen                        |
-| `M`                  | Mute / Unmute                            |
-| `→` (Right Arrow)    | Seek forward 5 seconds                   |
-| `←` (Left Arrow)     | Seek backward 5 seconds                  |
-| `L`                  | Seek forward 10 seconds                  |
-| `J`                  | Seek backward 10 seconds                 |
-| `Shift` + `>`        | Increase playback speed                  |
-| `Shift` + `<`        | Decrease playback speed                  |
-| `C`                  | Toggle custom subtitles on/off           |
+## Project structure
 
-## 🛠️ Built With
+```
+src/
+├── app/            # App Router: layout.tsx, page.tsx, globals.css
+├── components/     # VideoPlayer + shadcn/ui components
+├── hooks/          # reusable React hooks
+├── lib/            # utilities
+└── ai/             # Genkit scaffolding (unused in the client player)
+```
 
-- **[Next.js](https://nextjs.org/)**: The React Framework for the Web.
-- **[React](https://react.dev/)**: A JavaScript library for building user interfaces.
-- **[Tailwind CSS](https://tailwindcss.com/)**: A utility-first CSS framework for rapid UI development.
-- **[ShadCN/UI](https://ui.shadcn.com/)**: Re-usable components built using Radix UI and Tailwind CSS.
-- **[Lucide React](https://lucide.dev/)**: Beautiful & consistent icons.
-- **[Firebase Studio](https://firebase.google.com/studio)**: The development environment for building this app.
+## Deploy notes
+
+The site is deployed as a static export on **GitHub Pages** (branch `main`, root path). The build output lives at the repo root (`index.html`, `_next/`, `static/`) alongside the source so GitHub Pages can serve it directly. A `.nojekyll` file is included so paths starting with `_` are served correctly. To re-deploy: edit the source, run `npm run build`, copy `out/` over the repo root, and push to `main`.
+
+## Built by
+
+**Built by Girish Lade** — [ladestack.in](https://ladestack.in)
